@@ -45,6 +45,7 @@ pub const KNOWN: &[(&str, &str, &str)] = &[
     ("goose", "goose", "Goose"),
     ("maki", "maki", "Maki"),
     ("aider", "aider", "Aider"),
+    ("devin", "devin", "Devin"),
 ];
 
 pub fn program_for(agent: &str) -> String {
@@ -368,6 +369,9 @@ pub struct CliSpec {
     pub question: bool,
     /// Where a failed run writes what's known about it ([`crate::failure_log`]). None writes no log.
     pub logs: Option<PathBuf>,
+    /// The backend's stored API key, for an ACP agent that asks the host to authenticate before a
+    /// session opens (Devin). None for agents that sign in some other way.
+    pub key: Option<String>,
 }
 
 /// What a building run needs besides the working folder.
@@ -407,6 +411,7 @@ impl CliSpec {
             logs: None,
             adapters: AgentAdapters::built_in(),
             question: false,
+            key: None,
         }
     }
 }
@@ -443,7 +448,13 @@ fn acp_for(spec: &CliSpec) -> Option<AcpConversation> {
     let cwd = spec.project.clone().or_else(|| std::env::current_dir().ok()).unwrap_or_else(std::env::temp_dir);
     let mcp = mcp_for(spec, false);
     let preamble = spec.preamble.clone().unwrap_or_else(|| crate::prompt::cli_preamble(spec.beginner));
-    Some(AcpConversation::new(&spec.config.name, &agent, program, args, cwd, mcp, spec.resume.clone()).with_preamble(preamble).with_logs(spec.logs.clone()))
+    let auth = acp::key_auth_method(&agent).map(str::to_string).zip(spec.key.clone());
+    Some(
+        AcpConversation::new(&spec.config.name, &agent, program, args, cwd, mcp, spec.resume.clone())
+            .with_preamble(preamble)
+            .with_logs(spec.logs.clone())
+            .with_auth(auth),
+    )
 }
 
 /// A conversation backed by an agent CLI. Each message is one CLI run; Claude Code runs resume
@@ -1772,6 +1783,6 @@ echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}'
         assert!(reg.for_agent("claude").resumes() && !reg.for_agent("codex").resumes() && reg.for_agent("antigravity").resumes());
         // Registering an adapter for an existing id replaces that one.
         reg.register(Arc::new(EchoAgent));
-        assert_eq!(format!("{reg:?}"), r#"["claude-code", "codex", "gemini-cli", "opencode", "antigravity", "hermes", "maki", "echo-agent"]"#);
+        assert_eq!(format!("{reg:?}"), r#"["claude-code", "codex", "gemini-cli", "opencode", "antigravity", "hermes", "maki", "devin", "echo-agent"]"#);
     }
 }

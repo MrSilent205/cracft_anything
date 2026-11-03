@@ -153,8 +153,9 @@ Anything runs your own, unmodified `claude` program, which uses your own sign-in
 never sees or handles your account. Your use of it falls under your own agreement with
 Anthropic. See [docs/claude-code.md](docs/claude-code.md) for how and why. A Codex adapter
 exists but hasn't been verified on a real install yet. Other agents that speak ACP (Gemini CLI,
-Qwen Code, opencode, goose, Hermes, Maki) can be switched to it per backend; of those, only Maki has
-been run live. Anthropic, OpenAI, OpenRouter and local
+Qwen Code, opencode, goose, Hermes, Maki, Devin) can be switched to it per backend; of those, Maki
+and Devin have been run live (Devin authenticates with the backend's stored key — its own CLI
+sign-in doesn't count over ACP). Anthropic, OpenAI, OpenRouter and local
 OpenAI-compatible servers are available for questions and analysis (Settings → AI).
 
 ## Built for agents
