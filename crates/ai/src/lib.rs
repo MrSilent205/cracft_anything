@@ -69,7 +69,7 @@ impl BackendKind {
             BackendKind::Openai => &[openai::OPENAI_DEFAULT_MODEL],
             BackendKind::Openrouter => openai::OPENROUTER_MODELS,
             BackendKind::OpenaiCompatible => &[],
-            BackendKind::AgentCli => &["claude-code", "codex", "gemini-cli", "opencode", "antigravity", "hermes", "maki"],
+            BackendKind::AgentCli => &["claude-code", "codex", "gemini-cli", "opencode", "antigravity", "hermes", "maki", "devin"],
         }
     }
 
@@ -630,7 +630,8 @@ impl AiHub {
                 let session = self.engine.session();
                 (!session.clean_room(), failure_log::dir_in(&session.config_dir()))
             };
-            return Ok(cli_agents::conversation(cli_agents::CliSpec { deep, logs: Some(logs), ..spec }));
+            let key = self.keys.resolve(&first.config.name, first.config.kind);
+            return Ok(cli_agents::conversation(cli_agents::CliSpec { deep, logs: Some(logs), key, ..spec }));
         }
         let mut chain = vec![self.build_model(&first)?];
         for name in cfg.chain_from(&first.config.name).into_iter().skip(1) {
