@@ -789,6 +789,8 @@ fn dns_name(msg: &[u8], mut off: usize) -> Option<(String, usize)> {
     None
 }
 
+/// Decode a bounded set of DNS questions and answers from one message.
+/// Preserve complete entries before malformed data and mark the message incomplete.
 fn dns(msg: &[u8], d: &mut Decoded, label: &'static str) {
     let r = Reader::new(msg);
     let (Some(id), Some(flags), Some(qd), Some(an)) = (r.u16_be(0), r.u16_be(2), r.u16_be(4), r.u16_be(6)) else { return };
@@ -804,7 +806,8 @@ fn dns(msg: &[u8], d: &mut Decoded, label: &'static str) {
             out.incomplete = true;
             break;
         };
-        let Some(qt) = r.u16_be(next) else {
+        // The class is not displayed, but both two-byte fields must be present.
+        let (Some(qt), Some(_class)) = (r.u16_be(next), r.u16_be(next + 2)) else {
             out.incomplete = true;
             break;
         };
