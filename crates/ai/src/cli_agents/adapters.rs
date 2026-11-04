@@ -7,11 +7,13 @@ use super::*;
 
 mod antigravity;
 mod copilot;
+mod cursor_agent;
 mod hermes;
 mod maki;
 mod opencode;
 pub use antigravity::Antigravity;
 pub use copilot::Copilot;
+pub use cursor_agent::CursorAgent;
 pub use hermes::Hermes;
 pub use maki::Maki;
 pub use opencode::OpenCode;
@@ -88,6 +90,12 @@ pub trait AgentAdapter: Send + Sync {
     /// process starts. The refusal is kept on the conversation and reported by `send`.
     fn validate_options(&self, _options: &BackendOptions) -> Result<(), ToolError> {
         Ok(())
+    }
+    /// First `YYYY.MM.DD` agent version known to start Client-supplied MCP servers on
+    /// `session/new`. `None`: this adapter doesn't need that check. Older builds can accept the
+    /// list and then run without Craft Anything's tools.
+    fn acp_mcp_since(&self) -> Option<(u16, u8, u8)> {
+        None
     }
     /// The model shown in Settings: an explicit choice or the CLI's own default. `None` means
     /// the agent picks its model and doesn't offer a model selector here.
@@ -226,6 +234,7 @@ impl AgentAdapters {
                 Arc::new(Hermes),
                 Arc::new(Maki),
                 Arc::new(Copilot),
+                Arc::new(CursorAgent),
             ],
         }
     }
