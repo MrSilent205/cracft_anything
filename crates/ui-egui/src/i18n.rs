@@ -16,18 +16,21 @@ pub struct LangInfo {
     pub name: &'static str,
     /// Catalog contents (empty for the built-in English).
     pub source: &'static str,
+    /// Written right to left: the window is mirrored and rows start at the right.
+    pub rtl: bool,
 }
 
 pub static LANGUAGES: &[LangInfo] = &[
-    LangInfo { code: "en", name: "English", source: "" },
-    LangInfo { code: "de", name: "Deutsch", source: include_str!("i18n/de.tsv") },
-    LangInfo { code: "fr", name: "Français", source: include_str!("fr.tsv") },
-    LangInfo { code: "ja", name: "日本語", source: include_str!("ja.tsv") },
-    LangInfo { code: "zh-hans", name: "简体中文", source: include_str!("i18n/zh-hans.tsv") },
-    LangInfo { code: "zh-hant", name: "繁體中文", source: include_str!("i18n/zh-hant.tsv") },
-    LangInfo { code: "ru", name: "Русский", source: include_str!("i18n/ru.tsv") },
-    LangInfo { code: "ko", name: "한국어", source: include_str!("i18n/ko.tsv") },
-    LangInfo { code: "cs", name: "Čeština", source: include_str!("i18n/cs.tsv") },
+    LangInfo { code: "en", name: "English", source: "", rtl: false },
+    LangInfo { code: "de", name: "Deutsch", source: include_str!("i18n/de.tsv"), rtl: false },
+    LangInfo { code: "fr", name: "Français", source: include_str!("fr.tsv"), rtl: false },
+    LangInfo { code: "ja", name: "日本語", source: include_str!("ja.tsv"), rtl: false },
+    LangInfo { code: "zh-hans", name: "简体中文", source: include_str!("i18n/zh-hans.tsv"), rtl: false },
+    LangInfo { code: "zh-hant", name: "繁體中文", source: include_str!("i18n/zh-hant.tsv"), rtl: false },
+    LangInfo { code: "ru", name: "Русский", source: include_str!("i18n/ru.tsv"), rtl: false },
+    LangInfo { code: "ko", name: "한국어", source: include_str!("i18n/ko.tsv"), rtl: false },
+    LangInfo { code: "cs", name: "Čeština", source: include_str!("i18n/cs.tsv"), rtl: false },
+    LangInfo { code: "ar", name: "العربية", source: include_str!("i18n/ar.tsv"), rtl: true },
 ];
 
 /// Match a locale to a registered UI language. An explicit script wins over the region.
@@ -100,6 +103,11 @@ pub fn language() -> String {
     current().read().map(|g| g.0.clone()).unwrap_or_else(|_| "en".into())
 }
 
+/// Whether the current UI language is written right to left.
+pub fn is_rtl() -> bool {
+    current().read().is_ok_and(|g| LANGUAGES.iter().any(|l| l.rtl && l.code == g.0))
+}
+
 /// Translate a UI string.
 pub fn tr(s: &str) -> String {
     match current().read() {
@@ -120,6 +128,12 @@ pub fn trf(s: &str, args: &[(&str, &str)]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_arabic_is_right_to_left() {
+        let rtl: Vec<_> = LANGUAGES.iter().filter(|l| l.rtl).map(|l| l.code).collect();
+        assert_eq!(rtl, ["ar"]);
+    }
 
     #[test]
     fn catalog_parse_and_fallback() {
@@ -143,6 +157,9 @@ mod tests {
         assert_eq!(language_from_tag("fr-CA"), Some("fr"));
         assert_eq!(language_from_tag("de-DE"), Some("de"));
         assert_eq!(language_from_tag("de_AT.UTF-8"), Some("de"));
+        assert_eq!(language_from_tag("ar"), Some("ar"));
+        assert_eq!(language_from_tag("ar-IQ"), Some("ar"));
+        assert_eq!(language_from_tag("ar_SA.UTF-8"), Some("ar"));
         assert_eq!(language_from_tag("es-ES"), None);
         assert_eq!(preferred_language(["es-ES", "zh-HK", "en-US"]), "zh-hant");
         assert_eq!(preferred_language(["de-DE", "zh-HK"]), "de");
@@ -159,7 +176,7 @@ mod tests {
             out
         }
         let mut catalogs = Vec::new();
-        for lang in LANGUAGES.iter().filter(|l| matches!(l.code, "zh-hans" | "zh-hant" | "ru" | "ko" | "cs" | "de")) {
+        for lang in LANGUAGES.iter().filter(|l| matches!(l.code, "zh-hans" | "zh-hant" | "ru" | "ko" | "cs" | "de" | "ar")) {
             let mut keys = std::collections::BTreeSet::new();
             for (i, line) in lang.source.lines().enumerate() {
                 if line.trim().is_empty() || line.starts_with('#') {
