@@ -754,6 +754,10 @@ Gaps found while using the app for real projects.
       — claimed: sanketdofe, branch feature/r2.9-macos-menu-bar
 - [ ] macOS: an Edit menu (Undo, Cut, Copy, Paste, Select All). The keys work in text boxes, but
       the system's Edit items need the text box to answer them, so they'd show greyed out today
+- [ ] An Arabic UI that reads right to left: a full `ar` catalog, Arabic sentences in their right
+      word order (egui 0.36 shapes each word but lays words out left to right), and the window
+      mirrored (sidebar on the right, rows from the right)
+      — claimed: SoldierPePe, branch feature/r2.9-arabic-rtl
 
 ### R2.10 Pinned builds
 Owner: maintainers · Status: in progress
