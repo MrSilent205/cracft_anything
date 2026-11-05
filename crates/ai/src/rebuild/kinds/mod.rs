@@ -26,9 +26,9 @@ use super::*;
 
 /// What a kind is recognised from: the person's words, the target and the stack (when chosen).
 pub struct DetectCx<'a> {
-    /// Lower-case request padded with spaces (`" clone this website "`), for phrase matching.
+    /// Lower-case request prose padded with spaces, excluding URL tokens, for phrase matching.
     pub request: String,
-    /// The request as whole lower-case words padded with spaces, punctuation removed.
+    /// The same prose as whole lower-case words padded with spaces, punctuation removed.
     pub words: String,
     pub target: &'a TargetRef,
     /// The project's stack, or empty before one is chosen.
@@ -38,9 +38,13 @@ pub struct DetectCx<'a> {
 }
 
 impl<'a> DetectCx<'a> {
+    /// Derive matching text from prose, excluding link destinations and standalone URL tokens.
+    /// URL hosts, paths, queries and fragments must not select a project kind or named stack.
+    /// This only changes detection text; the original request and explicit target stay intact.
     pub fn new(request: &str, target: &'a TargetRef, stack: &'a str) -> DetectCx<'a> {
-        let words = stacks::words(request);
-        let request = format!(" {} ", request.to_lowercase());
+        let prose = detection_prose(request);
+        let words = stacks::words(&prose);
+        let request = format!(" {prose} ");
         DetectCx { request, words, target, stack, deep: false }
     }
 
@@ -48,6 +52,113 @@ impl<'a> DetectCx<'a> {
     pub fn says(&self, phrases: &[&str]) -> bool {
         phrases.iter().any(|p| self.request.contains(p))
     }
+}
+
+/// Keep inline Markdown labels while skipping complete destinations, including relative links,
+/// titles with spaces and balanced parentheses. Each iteration consumes request characters.
+fn detection_prose(request: &str) -> String {
+    let mut text = String::with_capacity(request.len());
+    let mut chars = request.chars().peekable();
+    let (mut brackets, mut destination) = (0usize, 0usize);
+    while let Some(c) = chars.next() {
+        if destination > 0 {
+            match c {
+                '\\' => {
+                    chars.next();
+                }
+                '(' => destination = destination.saturating_add(1),
+                ')' => destination -= 1,
+                _ => {}
+            }
+        } else if c == '[' {
+            brackets = brackets.saturating_add(1);
+        } else if c == ']' && brackets > 0 {
+            brackets -= 1;
+            if chars.peek() == Some(&'(') {
+                chars.next();
+                destination = 1;
+                text.push(' ');
+            }
+        } else {
+            text.push(c);
+        }
+    }
+    let lower = text.to_lowercase();
+    lower.split_whitespace().map(token_prose).collect::<Vec<_>>().join(" ")
+}
+
+/// Preserve prose before an attached URL, such as `site:https://…` or `jogo(example.com/…)`.
+fn token_prose(token: &str) -> &str {
+    if url_token(token) {
+        return "";
+    }
+    // Bound suffix comparisons on punctuation-heavy requests.
+    const MAX_URL_PREFIXES: usize = 32;
+    for (at, c) in token.char_indices().filter(|(_, c)| !c.is_alphanumeric() && !matches!(c, '-' | '_' | '.' | '+')).take(MAX_URL_PREFIXES) {
+        let Some(suffix) = token.get(at..).and_then(|s| s.strip_prefix(c)) else { continue };
+        if url_token(suffix) {
+            return token.get(..at).unwrap_or_default();
+        }
+    }
+    token
+}
+
+/// Recognize schemes, relative references and bare-domain addresses without interpreting their
+/// host/path/query/fragment as prose. Dotted numeric versions and ordinary words are not domains.
+fn url_token(token: &str) -> bool {
+    let address = token.trim_matches(['(', ')', '<', '>', '"', '\'', '`', ',', ';', '.', '!', '…', '“', '”', '‘', '’', '{', '}']);
+    let absolute = address.split_once("://").is_some_and(|(scheme, _)| {
+        scheme.starts_with(|c: char| c.is_ascii_alphabetic()) && scheme.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+    });
+    // A general `word:` rule would consume prose such as `site:https://…` and `Next.js:/…`.
+    let content_uri = address.split_once(':').is_some_and(|(scheme, rest)| !rest.is_empty() && matches!(scheme, "data" | "mailto"));
+    if absolute || content_uri || address.starts_with(['/', '#', '?']) || address.starts_with("./") || address.starts_with("../") {
+        return true;
+    }
+    let path = address.split(['?', '#']).next().unwrap_or_default();
+    if let Some((directory, rest)) = path.split_once('/')
+        && !directory.is_empty()
+        && !rest.is_empty()
+        && !directory.contains(':')
+        && path.split('/').all(|part| !part.is_empty() && part.chars().all(|c| c.is_alphanumeric() || matches!(c, '-' | '_' | '.' | '%' | '~')))
+    {
+        let words = stacks::words(path);
+        return !stacks::catalogue().iter().any(|stack| stacks::words(&stack.name) == words);
+    }
+    let authority = address.split(['/', '?', '#']).next().unwrap_or_default();
+    if authority.parse::<std::net::IpAddr>().is_ok() {
+        return true;
+    }
+    let host_port = authority.rsplit('@').next().unwrap_or_default();
+    let host = if let Some((host, port)) = host_port.split_once(':') {
+        let port = port.trim_end_matches(':');
+        if port.is_empty() && !authority.contains('@') && catalog_stack_word(host) {
+            return false;
+        }
+        if !port.is_empty() && (!port.bytes().all(|c| c.is_ascii_digit()) || port.parse::<u16>().is_err()) {
+            return false;
+        }
+        host
+    } else {
+        host_port
+    };
+    if host.parse::<std::net::IpAddr>().is_ok() || (host == "localhost" && address != host) {
+        return true;
+    }
+    if address == host && catalog_stack_word(host) {
+        return false;
+    }
+    let Some((_, suffix)) = host.rsplit_once('.') else { return false };
+    suffix.len() >= 2
+        && suffix.chars().all(char::is_alphabetic)
+        && host
+            .split('.')
+            .all(|label| !label.is_empty() && !label.starts_with('-') && !label.ends_with('-') && label.chars().all(|c| c.is_alphanumeric() || c == '-'))
+}
+
+/// Dotted names in the existing stack catalog remain prose, including before `:/relative-link`.
+fn catalog_stack_word(word: &str) -> bool {
+    stacks::catalogue().iter().any(|stack| stack.name.split_whitespace().any(|name| name.eq_ignore_ascii_case(word)))
 }
 
 /// What the brief is written from.

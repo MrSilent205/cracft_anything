@@ -658,6 +658,16 @@ Owner: maintainers · Status: in progress
 ### R2.9 Everyday use: typing, projects, settings
 Owner: maintainers · Status: in progress
 Gaps found while using the app for real projects.
+- [x] Port and validate a Brazilian Portuguese (`pt-br`) interface catalog against the current
+      locale keys, with locale selection, translated request-routing checks and `README.pt.md` — claimed:
+      Arjey01, branch feature/r2.9-pt-br-translation — in PR #850
+- [x] Review every Brazilian Portuguese catalog entry and `README.pt.md` for meaning, grammar,
+      consistent terminology and natural interface wording — in PR #850.
+- [x] Preserve Portuguese engine choices after contracted prepositions (`no`, `na`) and keep
+      game-related website topics as websites, without changing games intended for web pages,
+      with whole-word and saved-stack regressions; exclude URL terms from kind/stack matching
+      while preserving visible link labels — in PR #850.
+- [ ] Obtain an independent native-speaker review of the Brazilian Portuguese wording.
 - [x] Agent paragraphs with glossary terms and long file links wrap together without pushing
       their card or later messages under the sidebar (#523); Project and Ask bounds checked at two sizes
       — claimed: carl-dourado, branch hotfix/r2.9-523-message-width

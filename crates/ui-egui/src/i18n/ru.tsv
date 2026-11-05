@@ -1380,7 +1380,7 @@ your files there are the app, edited in place	ваши файлы там — э�
 {n} step(s) didn't work and were retried or skipped.	Шагов, которые не сработали и были повторены или пропущены: {n}.
 {n} tokens	Токенов: {n}
 {n} · ${spent:.2} of ${budget:.2}	{n} · ${spent:.2} из ${budget:.2}
-{n} · ${spent} of ${budget}	{n} · ${spent} из ${budget}
+{n} · {spent} of {budget}	{n} · {spent} из {budget}
 {scenes} {}	{scenes} {}
 {text}, {}	{text}, {}
 {title} hit a bug and stopped safely. ({what})	{title} столкнулся с ошибкой и безопасно остановился. ({what})

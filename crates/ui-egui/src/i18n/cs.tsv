@@ -1380,7 +1380,7 @@ your files there are the app, edited in place	vaše soubory ve složce jsou apli
 {n} step(s) didn't work and were retried or skipped.	Neúspěšné kroky (opakovány nebo přeskočeny): {n}.
 {n} tokens	tokeny: {n}
 {n} · ${spent:.2} of ${budget:.2}	{n} · ${spent:.2} z ${budget:.2}
-{n} · ${spent} of ${budget}	{n} · ${spent} z ${budget}
+{n} · {spent} of {budget}	{n} · {spent} z {budget}
 {scenes} {}	{scenes} {}
 {text}, {}	{text}, {}
 {title} hit a bug and stopped safely. ({what})	{title}: chyba způsobila bezpečné zastavení. ({what})

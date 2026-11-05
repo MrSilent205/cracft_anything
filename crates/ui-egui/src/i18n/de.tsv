@@ -1380,7 +1380,7 @@ your files there are the app, edited in place	deine Dateien dort sind die App, d
 {n} step(s) didn't work and were retried or skipped.	{n} Schritt(e) haben nicht funktioniert und wurden wiederholt oder übersprungen.
 {n} tokens	{n} Tokens
 {n} · ${spent:.2} of ${budget:.2}	{n} · ${spent:.2} von ${budget:.2}
-{n} · ${spent} of ${budget}	{n} · ${spent} von ${budget}
+{n} · {spent} of {budget}	{n} · {spent} von {budget}
 {scenes} {}	{scenes} {}
 {text}, {}	{text}, {}
 {title} hit a bug and stopped safely. ({what})	{title} hatte einen Fehler und hat sicher gestoppt. ({what})

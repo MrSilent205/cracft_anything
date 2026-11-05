@@ -533,14 +533,16 @@ struct AssetPrices {
 }
 
 impl AssetPrices {
+    /// Read prices for the selected asset model and budget, then format them for the UI locale.
+    /// Missing catalog entries retain the zero-cost fallback used by the existing price display.
     fn of(app: &CraftApp) -> AssetPrices {
-        use crate::usage::asset_cost_words;
-        use craft_anything_engines::assets::{Catalogue, Shape, usd};
+        use crate::usage::{asset_cost_words, usd_amount};
+        use craft_anything_engines::assets::{Catalogue, Shape};
         let table = Catalogue::built_in();
         let picture =
             table.image_model(app.settings.assets.image_model.as_deref()).or_else(|_| table.image_model(None)).map(|m| m.cost(Shape::Square)).unwrap_or(0.0);
         let model = table.model_3d(None).map(|m| m.cost(true)).unwrap_or(0.0) + picture;
-        AssetPrices { model: asset_cost_words(model), picture: asset_cost_words(picture), budget: tr(&usd(app.settings.assets.budget())) }
+        AssetPrices { model: asset_cost_words(model), picture: asset_cost_words(picture), budget: usd_amount(app.settings.assets.budget()) }
     }
 }
 

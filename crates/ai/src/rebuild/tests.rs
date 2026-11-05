@@ -83,6 +83,228 @@ fn chinese_requests_keep_their_project_kind() {
     assert_eq!(choose("制作一个笔记应用", &TargetRef::None).0, "app");
 }
 
+/// Portuguese suggestions retain their project kind and explicit engine selections.
+#[test]
+fn brazilian_portuguese_requests_keep_their_project_kind() {
+    for request in ["Um jogo simples da cobrinha", "Recrie a jogabilidade deste jogo", "Um mini-jogo em Rust"] {
+        assert_eq!(choose(request, &TargetRef::None).0, "game", "{request}");
+    }
+    for request in ["Um site para minha padaria", "Uma página web para meu projeto", "Uma página da web com um formulário"] {
+        assert_eq!(choose(request, &TargetRef::None), ("website", stacks::BUILDERS_CHOICE), "{request}");
+    }
+    assert_eq!(choose("Um aplicativo de notas", &TargetRef::None).0, "app");
+    for (request, stack) in [
+        ("Um jogo da cobrinha em Rust", "Rust + macroquad"),
+        ("Um jogo com Godot", "Godot"),
+        ("Um jogo usando Unity", "Unity"),
+        ("Recrie este jogo em Unreal Engine 5", "Unreal Engine"),
+    ] {
+        assert_eq!(choose(request, &TargetRef::None), ("game", stack), "{request}");
+    }
+}
+
+/// Contracted prepositions select the named engine, without matching partial engine names.
+#[test]
+fn portuguese_engine_prepositions_match_whole_words() {
+    for preposition in ["em", "com", "usando", "no", "na"] {
+        for (engine, stack) in [("Godot", "Godot"), ("Unity", "Unity"), ("Unreal Engine", "Unreal Engine"), ("Rust", "Rust + macroquad")] {
+            let request = format!("Faça um jogo {preposition} {engine}.");
+            assert_eq!(choose(&request, &TargetRef::None), ("game", stack), "{request}");
+        }
+    }
+    for request in ["Faça um jogo normal sobre Godot", "Faça um jogo no Godotinho", "Faça um jogo na UnityPlus"] {
+        assert_eq!(choose(request, &TargetRef::None), ("game", "Unity"), "{request}");
+    }
+    assert_eq!(choose("FAÇA UM JOGO NO GODOT!", &TargetRef::None), ("game", "Godot"));
+}
+
+/// A requested site stays a site when games are its topic; an established game stack still wins.
+#[test]
+fn portuguese_game_topics_do_not_override_website_requests() {
+    for request in [
+        "Um site sobre jogos de tabuleiro",
+        "Uma página web com dicas de jogabilidade",
+        "Uma página da web sobre o jogo da cobrinha",
+        "Um site sobre jogos, com React",
+        "Crie um site sobre o jogo de plataforma que roda em uma página web",
+        "Crie uma página web sobre mini-jogos",
+        "Crie um site: jogos de tabuleiro",
+    ] {
+        assert_eq!(choose(request, &TargetRef::None).0, "website", "{request}");
+        assert_eq!(kind_of(request, &TargetRef::None, "Godot"), "game", "saved stack: {request}");
+    }
+    assert_eq!(choose("Um site sobre jogos de tabuleiro", &TargetRef::None).1, stacks::BUILDERS_CHOICE);
+    assert_eq!(choose("Um jogo de tabuleiro", &TargetRef::None), ("game", "Unity"));
+}
+
+/// Mentioning where a game will run does not turn the requested game into a website.
+#[test]
+fn portuguese_games_for_web_pages_keep_their_project_kind() {
+    for request in [
+        "Faça um jogo de plataforma para rodar em uma página web",
+        "Crie um jogo da cobrinha para meu site",
+        "Faça um mini-jogo para uma página da web",
+        "FAÇA UM JOGO: ELE DEVE RODAR EM UMA PÁGINA WEB!",
+    ] {
+        assert_eq!(choose(request, &TargetRef::None), ("game", "Unity"), "{request}");
+    }
+    assert_eq!(choose("Faça um jogo no Godot para uma página web", &TargetRef::None), ("game", "Godot"));
+    let web = TargetRef::Website { url: "https://example.com".into() };
+    assert_eq!(choose("Um jogo para uma página web", &web).0, "website", "an existing website target still wins");
+    assert_eq!(kind_of("Um jogo para uma página web", &TargetRef::None, "React + TypeScript (Vite)"), "website", "a saved website stack still wins");
+}
+
+/// URL hosts, paths, queries and fragments describe references, not the requested project kind.
+#[test]
+fn url_terms_do_not_choose_project_kind() {
+    for url in [
+        "https://example.com/site",
+        "https://site.example.com/",
+        "https://example.com/?kind=site",
+        "https://example.com/#site",
+        "HTTPS://EXAMPLE.COM/SITE",
+        "(https://example.com/site)",
+        "<https://example.com/site>",
+        "[referência](https://example.com/site)",
+        "www.example.com/site",
+        "(WWW.EXAMPLE.COM/site)",
+        "https://example.com/jogo",
+        "https://example.com/game",
+        "https://example.com/website",
+        "https://example.com/游戏",
+        "example.com/site",
+        "site.example.com",
+        "example.com?kind=site",
+        "example.com#site",
+        "example.com:8080/site",
+        "example.com:/site",
+        "site.example.com:8080:",
+        "site.example.com:8080:!",
+        "(site.example.com:8080:)",
+        "user@next.js:/site",
+        "reader:example@next.js:/site",
+        "user@next.js:8080/site",
+        "(example.com/site).",
+        "//example.com/site",
+        "/site",
+        "./site",
+        "../site",
+        "#site",
+        "[referência](/site)",
+        "[referência](../site)",
+        "[referência](#site)",
+        "[referência](example.com/site)",
+        "[referência](/site \"game\")",
+        "[referência](/site_(game))",
+        "127.0.0.1/site",
+        "localhost:8080/site",
+        "user@site.example.com",
+        "site.example.com!",
+        "site.example.com?",
+        "“site.example.com!”",
+        "{site.example.com}",
+        "example.com/site?next=https://example.org",
+        "example.com/jogo?next=https://example.org",
+        "site.example.com?redirect=http://example.org",
+        "/site?next=https://example.org",
+        "./site?next=https://example.org",
+        "../site?next=ftp://example.org",
+        "//example.com/site?next=https://example.org",
+        "https://example.com/site?next=https://example.org",
+        "[referência](/site?next=https://example.org)",
+        "data:text/plain,game",
+        "data:text/plain,site",
+        "mailto:game",
+        "mailto:site@example.com",
+        "assets/site",
+        "assets/game",
+        "assets/nested/site?version=1",
+        "assets/site#section",
+        "assets/site?next=https://example.org",
+        "(assets/site)",
+    ] {
+        let app = format!("Crie um aplicativo de desktop que monitore {url}");
+        assert_eq!(choose(&app, &TargetRef::None), ("app", "Rust + egui (eframe)"), "{app}");
+        let site = format!("Crie um site: use {url} como referência");
+        assert_eq!(choose(&site, &TargetRef::None), ("website", stacks::BUILDERS_CHOICE), "{site}");
+        let game = format!("Crie um jogo para uma página web, usando {url} como referência");
+        assert_eq!(choose(&game, &TargetRef::None), ("game", "Unity"), "{game}");
+        let topic = format!("Consulte {url} e crie um site sobre jogos de tabuleiro");
+        assert_eq!(choose(&topic, &TargetRef::None).0, "website", "{topic}");
+        assert_eq!(kind_of(&app, &TargetRef::None, "Godot"), "game", "saved stack: {app}");
+        let web = TargetRef::Website { url: url.into() };
+        assert_eq!(choose(&app, &web).0, "website", "explicit target: {app}");
+    }
+}
+
+/// Engine words inside links cannot override prose; visible Markdown labels remain prose.
+#[test]
+fn url_terms_do_not_choose_named_stacks() {
+    for url in [
+        "https://example.com/no/Godot",
+        "https://example.com/in/Rust",
+        "https://example.com/?using=Godot",
+        "www.example.com/no/Godot",
+        "example.com/no/Godot",
+        "[referência](/no/Godot)",
+        "[referência](/ref \"in Godot\")",
+        "[referência](#in-Godot)",
+        "example.com/no/Godot?next=https://example.org",
+        "/no/Godot?next=https://example.org",
+        "data:text/plain,in/Godot",
+        "mailto:in/Godot",
+        "assets/in/Godot",
+        "assets/no/Godot",
+    ] {
+        let request = format!("Crie um jogo inspirado em {url}");
+        assert_eq!(choose(&request, &TargetRef::None), ("game", "Unity"), "{request}");
+        assert_eq!(KindRegistry::built_in().named(&request, &TargetRef::None), None, "{request}");
+    }
+    assert_eq!(choose("Crie um jogo no Godot, consulte https://example.com/in/Rust", &TargetRef::None), ("game", "Godot"));
+    assert_eq!(choose("Crie um [site](https://example.com/game) sobre jogos", &TargetRef::None).0, "website");
+    assert_eq!(choose("Crie um jogo no [Godot](https://example.com/site)", &TargetRef::None), ("game", "Godot"));
+    assert_eq!(choose("Crie uma [página web](https://example.com/game)", &TargetRef::None).0, "website");
+    assert_eq!(choose("Crie um [site](/game) sobre jogos", &TargetRef::None).0, "website");
+    assert_eq!(choose("Crie um jogo no [Godot](../site)", &TargetRef::None), ("game", "Godot"));
+}
+
+/// Address detection keeps ordinary technical prose and version numbers available for matching.
+#[test]
+fn detection_prose_keeps_words_and_versions() {
+    for word in ["site", "jogo", "Godot", "1.0", "0.4.0", "v0.4.0", "Next.js"] {
+        let cx = DetectCx::new(word, &TargetRef::None, "");
+        assert!(cx.request.contains(&word.to_lowercase()), "{word}");
+    }
+    assert_eq!(choose("Crie um site com Next.js", &TargetRef::None), ("website", "Next.js + TypeScript"));
+    assert_eq!(choose("A game in Rust/macroquad", &TargetRef::None), ("game", "Rust + macroquad"));
+    assert_eq!(choose("Um jogo em Rust/macroquad", &TargetRef::None), ("game", "Rust + macroquad"));
+    assert_eq!(choose("A desktop app in Rust/egui/eframe", &TargetRef::None), ("app", "Rust + egui (eframe)"));
+}
+
+/// A URL attached after punctuation must not consume the preceding requested kind or engine.
+#[test]
+fn attached_urls_keep_preceding_prose() {
+    for address in [
+        "https://example.com/game",
+        "example.com/game",
+        "www.example.com/game",
+        "example.com/game?next=https://example.org",
+        "/game?next=https://example.org",
+        "assets/game",
+    ] {
+        for separator in [":", "(", "：", ";"] {
+            let site = format!("Crie um site{separator}{address}");
+            assert_eq!(choose(&site, &TargetRef::None).0, "website", "{site}");
+            let game = format!("Crie um jogo{separator}{address}");
+            assert_eq!(choose(&game, &TargetRef::None), ("game", "Unity"), "{game}");
+            let engine = format!("Crie um jogo no Godot{separator}{address}");
+            assert_eq!(choose(&engine, &TargetRef::None), ("game", "Godot"), "{engine}");
+            let next = format!("Crie um site com Next.js{separator}{address}");
+            assert_eq!(choose(&next, &TargetRef::None), ("website", "Next.js + TypeScript"), "{next}");
+        }
+    }
+}
+
 #[test]
 fn site_dir_prefers_build_output() {
     let d = tempfile::tempdir().unwrap();

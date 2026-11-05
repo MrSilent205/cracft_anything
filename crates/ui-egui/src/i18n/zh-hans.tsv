@@ -1380,7 +1380,7 @@ your files there are the app, edited in place	该位置的文件就是应用，�
 {n} step(s) didn't work and were retried or skipped.	{n} 个步骤未成功，已重试或跳过。
 {n} tokens	{n} 个 token
 {n} · ${spent:.2} of ${budget:.2}	{n} · 已用 ${spent:.2} / ${budget:.2}
-{n} · ${spent} of ${budget}	{n} · 已用 ${spent}，预算 ${budget}
+{n} · {spent} of {budget}	{n} · 已用 {spent}，预算 {budget}
 {scenes} {}	{scenes} {}
 {text}, {}	{text}，{}
 {title} hit a bug and stopped safely. ({what})	{title} 遇到错误，已安全停止。({what})

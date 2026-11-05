@@ -23,6 +23,7 @@ pub static LANGUAGES: &[LangInfo] = &[
     LangInfo { code: "de", name: "Deutsch", source: include_str!("i18n/de.tsv") },
     LangInfo { code: "fr", name: "Français", source: include_str!("fr.tsv") },
     LangInfo { code: "ja", name: "日本語", source: include_str!("ja.tsv") },
+    LangInfo { code: "pt-br", name: "Português (Brasil)", source: include_str!("i18n/pt-br.tsv") },
     LangInfo { code: "zh-hans", name: "简体中文", source: include_str!("i18n/zh-hans.tsv") },
     LangInfo { code: "zh-hant", name: "繁體中文", source: include_str!("i18n/zh-hant.tsv") },
     LangInfo { code: "ru", name: "Русский", source: include_str!("i18n/ru.tsv") },
@@ -39,6 +40,7 @@ pub fn language_from_tag(tag: &str) -> Option<&'static str> {
     let mut parts = tag.split('-');
     let primary = parts.next()?;
     match primary {
+        "pt" => Some("pt-br"),
         "zh" => {
             let parts: Vec<_> = parts.take_while(|p| p.len() != 1).collect();
             if parts.contains(&"hant") {
@@ -151,6 +153,7 @@ mod tests {
         assert_eq!(preferred_language(std::iter::empty::<&str>()), "en");
     }
 
+    /// Maintained catalogs must cover the same keys and preserve runtime placeholders and ellipses.
     #[test]
     fn catalogs_are_valid_and_have_matching_keys() {
         fn placeholders(s: &str) -> Vec<&str> {
@@ -159,7 +162,7 @@ mod tests {
             out
         }
         let mut catalogs = Vec::new();
-        for lang in LANGUAGES.iter().filter(|l| matches!(l.code, "zh-hans" | "zh-hant" | "ru" | "ko" | "cs" | "de")) {
+        for lang in LANGUAGES.iter().filter(|l| matches!(l.code, "zh-hans" | "zh-hant" | "ru" | "ko" | "cs" | "de" | "pt-br")) {
             let mut keys = std::collections::BTreeSet::new();
             for (i, line) in lang.source.lines().enumerate() {
                 if line.trim().is_empty() || line.starts_with('#') {
@@ -181,6 +184,15 @@ mod tests {
         for c in catalogs.iter().skip(1) {
             assert_eq!(catalogs.first(), Some(c));
         }
+    }
+
+    /// Portuguese regional and POSIX aliases share the Brazilian catalog, including OS preference.
+    #[test]
+    fn brazilian_portuguese_locale_aliases_and_system_preference() {
+        for tag in ["pt", "pt-BR", "PT-br", "pt_BR.UTF-8", "pt-PT", "pt-Latn-BR"] {
+            assert_eq!(language_from_tag(tag), Some("pt-br"), "{tag}");
+        }
+        assert_eq!(preferred_language(["pt_BR.UTF-8", "en-US"]), "pt-br");
     }
 
     /// Every translation keeps its key's `{placeholders}`, or `trf` would leave them unfilled.

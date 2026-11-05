@@ -32,6 +32,7 @@ fn harness(mut settings: Settings, dir: &Path) -> Harness<'static, CraftApp> {
     })
 }
 
+/// Exercise locale startup, switching and persistence in one test because language state is global.
 #[test]
 fn chinese_startup_language_menu_and_saved_selection() {
     let temp = tempfile::tempdir().unwrap();
@@ -130,7 +131,101 @@ fn chinese_startup_language_menu_and_saved_selection() {
         existing.get_by_label(label);
         existing.get_by_value(native);
     }
+    brazilian_portuguese_roundtrip(&temp.path().join("pt-br"));
+    asset_spending_roundtrip(&temp.path().join("asset-amounts"));
     i18n::set_language("unsupported-locale");
     assert_eq!(i18n::language(), "en");
     assert_eq!(i18n::tr("Settings"), "Settings");
+}
+
+/// Verify Portuguese labels, formatting and suggestions, saving only under the isolated test folder.
+fn brazilian_portuguese_roundtrip(dir: &Path) {
+    let settings = Settings { mode: Mode::Beginner, first_run_done: true, language: "pt-br".into(), ..Default::default() };
+    let mut h = harness(settings, dir);
+    h.run_steps(3);
+    h.get_by_label("Idioma");
+    h.get_by_value("Português (Brasil)");
+    assert_eq!(i18n::trf("Opened {name}", &[("name", "sample.exe")]), "Aberto: sample.exe");
+    assert_eq!(craft_anything_ui_egui::usage::cost_words(3.21), "cerca de US$ 3,21");
+    assert_eq!(craft_anything_ui_egui::usage::usd_amount(5.0), "US$ 5,00");
+    assert_eq!(craft_anything_ui_egui::usage::usd_amount(0.0031), "menos de US$ 0,01");
+    assert_eq!(craft_anything_ui_egui::usage::usd_amount(0.0), "US$ 0,00");
+    assert_eq!(craft_anything_ui_egui::usage::usd_amount(0.01), "US$ 0,01");
+    assert_eq!(craft_anything_ui_egui::usage::asset_cost_words(0.0031), "menos de US$ 0,01");
+    let kinds = craft_anything_ai::rebuild::KindRegistry::built_in();
+    for (source, expected) in [("A website for my bakery", "website"), ("A simple snake game", "game")] {
+        let request = i18n::tr(source);
+        let (kind, _) = kinds.choose(&request, &craft_anything_engine::workspace::TargetRef::None, false).unwrap();
+        assert_eq!(kind.id(), expected, "{request}");
+    }
+    let title = h.state().engine.registry().get("native_functions_list").unwrap().title;
+    let translated_title = i18n::tr(title);
+    assert_ne!(translated_title, title);
+    h.state_mut().state.settings_open = false;
+    h.state_mut().state.palette.open = true;
+    h.state_mut().state.palette.query = translated_title.clone();
+    h.run_steps(3);
+    h.get_by_label(&translated_title);
+    h.state_mut().state.palette.open = false;
+    h.state_mut().state.settings_open = true;
+    h.run_steps(3);
+
+    h.get_by_value("Português (Brasil)").click();
+    h.run();
+    h.get_by_label("English").scroll_to_me();
+    h.run();
+    h.get_by_label("English").click();
+    h.run_steps(3);
+    assert_eq!(i18n::language(), "en");
+    h.get_by_label("Language");
+    h.get_by_value("English").click();
+    h.run();
+    h.get_by_label("Português (Brasil)").scroll_to_me();
+    h.run();
+    h.get_by_label("Português (Brasil)").click();
+    h.run_steps(3);
+    assert_eq!(i18n::language(), "pt-br");
+    assert_eq!(h.state().engine.session().settings.language, "pt-br");
+
+    let config = dir.join("config.toml");
+    h.state().engine.session().settings.save_to(&config).unwrap();
+    drop(h);
+    let mut restored = harness(Settings::load_from(&config), dir);
+    restored.run_steps(3);
+    assert_eq!(i18n::language(), "pt-br");
+    restored.get_by_label("Idioma");
+    restored.get_by_value("Português (Brasil)");
+}
+
+/// Render the project's real asset row in both locales so caller formatting is covered too.
+fn asset_spending_roundtrip(dir: &Path) {
+    use craft_anything_engine::workspace::{TargetRef, Workspace};
+    use craft_anything_ui_egui::state::Screen;
+    for (lang, amount, increase, small, small_row) in [
+        ("en", "2 · $1.23 of $5.00", "Raise the budget by $5.00", "under $0.01", "2 · under $0.01 of under $0.01"),
+        ("pt-br", "2 · US$ 1,23 de US$ 5,00", "Aumentar o orçamento em US$ 5,00", "menos de US$ 0,01", "2 · menos de US$ 0,01 de menos de US$ 0,01"),
+    ] {
+        let root = dir.join(lang);
+        let settings = Settings { mode: Mode::Beginner, first_run_done: true, language: lang.into(), ..Default::default() };
+        let mut h = harness(settings, &root);
+        let mut ws = Workspace::create(&root, "Assets", "A game", TargetRef::None).unwrap();
+        ws.manifest.stack = "Godot".into();
+        ws.manifest.generate_assets = true;
+        ws.manifest.asset_budget_usd = 5.0;
+        let a = h.state_mut();
+        a.state.settings_open = false;
+        a.state.screen = Screen::Project;
+        a.facts.root = ws.root.clone();
+        a.facts.assets = (2, 1.23);
+        a.workspace = Some(ws);
+        h.run_steps(3);
+        h.get_by_label(amount);
+        h.get_by_label(increase);
+        assert_eq!(craft_anything_ui_egui::usage::usd_amount(0.0031), small);
+        let a = h.state_mut();
+        a.facts.assets.1 = 0.0031;
+        a.workspace.as_mut().unwrap().manifest.asset_budget_usd = 0.0031;
+        h.run_steps(3);
+        h.get_by_label(small_row);
+    }
 }

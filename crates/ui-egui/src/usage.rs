@@ -40,9 +40,23 @@ impl ProjectClock {
     }
 }
 
-/// "about $3.20".
+/// Label an estimated USD cost in the active UI locale, without converting the currency.
 pub fn cost_words(usd: f64) -> String {
-    trf("about ${n}", &[("n", &format!("{usd:.2}"))])
+    trf("about ${n}", &[("n", &decimal_amount(usd))])
+}
+
+/// Format two decimal places for display; pt-BR changes the separator, never the stored value.
+fn decimal_amount(usd: f64) -> String {
+    let amount = format!("{usd:.2}");
+    if crate::i18n::language() == "pt-br" { amount.replace('.', ",") } else { amount }
+}
+
+/// A stated USD amount, without the wording used for an estimate.
+pub fn usd_amount(usd: f64) -> String {
+    if usd > 0.0 && usd < NOT_MONEY {
+        return tr("under $0.01");
+    }
+    if crate::i18n::language() == "pt-br" { format!("US$ {}", decimal_amount(usd)) } else { format!("${usd:.2}") }
 }
 
 /// Below this, a difference between two amounts is rounding, not money.
@@ -172,6 +186,9 @@ mod tests {
 
     #[test]
     fn plain_words_for_numbers() {
+        assert_eq!(usd_amount(0.0031), "under $0.01");
+        assert_eq!(usd_amount(0.0), "$0.00");
+        assert_eq!(usd_amount(0.01), "$0.01");
         assert_eq!(asset_cost_words(0.0031), "under $0.01");
         assert_eq!(asset_cost_words(0.65), "about $0.65");
         assert_eq!(tokens_words(830), "830 tokens");

@@ -141,10 +141,27 @@ impl TargetKind for WebsiteKind {
         }
     }
 
+    /// Recognize a website from its target, explicit site terms or an existing web stack.
+    /// A website's subject matter does not remove this claim on the project.
     fn detect(&self, cx: &DetectCx) -> Option<u32> {
         if matches!(cx.target, TargetRef::Website { .. }) {
             Some(100)
-        } else if cx.says(&[" website", " web page", " webpage", " landing page", " site ", " webseite", " internetseite", "网站", "網站", "网页", "網頁"])
+        } else if cx.words.contains(" site ")
+            || cx.says(&[
+                " website",
+                " web page",
+                " webpage",
+                " landing page",
+                " site ",
+                " webseite",
+                " internetseite",
+                "网站",
+                "網站",
+                "网页",
+                "網頁",
+                " página web",
+                " página da web",
+            ])
         {
             Some(50)
         } else if matches!(cx.target, TargetRef::None) && stacks::get(cx.stack).is_some_and(|s| s.site) {

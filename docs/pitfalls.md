@@ -71,6 +71,21 @@ names (`git merge-base --is-ancestor <fix> <release tag>`), and check the messag
 
 ## Tests
 
+**A Portuguese website-topic guard also suppressed games intended for web pages.** Checking for
+any website mention lost the requested kind. Compare the first project-kind phrase, preserve
+existing targets and stacks, and test both a site about games and a game for a web page.
+
+**Normalizing request words turned URL paths into project-kind and engine phrases.** A desktop
+app monitoring a URL ending in `/site` became a website. Derive both phrase and whole-word
+matching text from prose without URL tokens, keep visible link labels, and test hosts, paths,
+queries, fragments and named engines while preserving explicit targets and saved stacks.
+Include scheme-less domains and relative Markdown destinations, with titles and nested
+parentheses; keep known dotted stack names such as `Next.js` rather than treating them as hosts.
+Also preserve prose before attached URLs and trim sentence punctuation from bare hosts:
+`site:https://…` and `site.example.com!` need opposite classifications.
+Recognize the outer address before any embedded scheme: a redirect URL inside a query must
+not expose the outer host/path as prose.
+
 **A test started a real download on a contributor's machine.** A test called `engines_install` for
 Unity; a later change made that download the vendor installer and open it on Windows. It also
 created folders in the real config directory (`Session::default()` uses it).
