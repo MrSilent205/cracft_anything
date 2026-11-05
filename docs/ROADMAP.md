@@ -754,6 +754,17 @@ Gaps found while using the app for real projects.
       — claimed: sanketdofe, branch feature/r2.9-macos-menu-bar
 - [ ] macOS: an Edit menu (Undo, Cut, Copy, Paste, Select All). The keys work in text boxes, but
       the system's Edit items need the text box to answer them, so they'd show greyed out today
+- [x] An Arabic UI that reads right to left: a full `ar` catalog, Arabic sentences in their right
+      word order (egui 0.36 shapes each word but lays words out left to right), and the window
+      mirrored (sidebar on the right, rows from the right)
+      — claimed: SoldierPePe, branch feature/r2.9-arabic-rtl; PR #868
+- [ ] Right to left, egui's `Grid` (workbench Selection and Target details, Settings → Engines tool
+      paths, tool forms) stays left to right: it has no right-to-left layout. Rows instead of a grid,
+      or right-to-left support in the egui fork
+- [ ] Check the Arabic window live on macOS and Linux (only Windows and offscreen snapshots so far)
+- [ ] Text the engine and the rebuild workflow write stays English in every UI language: a
+      project's progress lines ("Building the first version…"), check results, AI options found
+      at first run, error messages. Give them typed ids (or catalog keys) the UI translates
 
 ### R2.10 Pinned builds
 Owner: maintainers · Status: in progress
